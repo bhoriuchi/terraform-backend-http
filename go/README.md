@@ -2,6 +2,9 @@
 
 An extendable HTTP backend framework for terraform written in GO
 
+[![Documentation](https://godoc.org/github.com/bhoriuchi/terraform-backend-http/go?status.svg)](https://godoc.org/github.com/bhoriuchi/terraform-backend-http/go)
+
+
 ## Features
 
 * Optional state encryption with AES-256-GCM
@@ -15,6 +18,10 @@ There are two components to a backend.
 1. The backend itself which provides generic `http.HandleFunc` functions for the various operations required by an http state backend. This allows compatibility with most popular http server frameworks and allows control over authentication, ssl, etc.
 
 2. The store which is an interface that can be implemented to allow any storage type. This allows custom stores to be developed outside this repo.
+
+States are identified by a `ref` value. By default this value is obtained from the query string, but a custom `GetRefFunc` can be provided in the backend options to get the ref from another source (i.e. a route path variable)
+
+Encryption can be enabled for a state by setting `encrypt=true` and providing an encryption key to the backend options. By default this value is obtained from the query string, but a custom `GetEncryptFunc` can be provided in the backend options to get the encrypt value from another source
 
 ## Example
 
