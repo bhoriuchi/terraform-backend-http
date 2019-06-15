@@ -2,6 +2,12 @@
 
 An extendable HTTP backend framework for terraform written in GO
 
+## Features
+
+* Optional state encryption with AES-256-GCM
+* Custom state metadata extraction
+* Extensible store
+
 ## Overview
 
 There are two components to a backend.
@@ -72,3 +78,48 @@ func main() {
   log.Fatal(http.ListenAndServe(":3000", nil))
 }
 ```
+
+## Encryption
+
+Encryption can be enabled by providing an `EncryptionKey` to the backend options. This can either by a `[]byte` or a func that returns a `[]byte` containing the encryption key. As well as adding an `encrypt=true` query string to the backend URL. Additionally you can provide your own ref and encrypt getters in the backend options with `GetRefFunc` and `GetEncryptFunc`
+
+```hcl
+terraform {
+  backend "http" {
+    address = "http://localhost:3000/backend?ref=foo&encrypt=true"
+    lock_address = "http://localhost:3000/backend?ref=foo&encrypt=true"
+    unlock_address = "http://localhost:3000/backend?ref=foo&encrypt=true"
+  }
+}
+
+resource "local_file" "testfile" {
+  content = "foobar"
+  filename = "${path.module}/test.json"
+}
+```
+
+## Logging
+
+A logging function can be provided to the backend options with `Logger` that will be called on informational and error events
+
+## Extending
+
+To add a custom http backend store, simply implement the `Store` interface
+
+```go
+type Store interface {
+	Init() error
+
+	// state
+	GetState(ref string) (state map[string]interface{}, encrypted bool, err error)
+	PutState(ref string, state, metadata map[string]interface{}, encrypted bool) error
+	DeleteState(ref string) error
+
+	// lock
+	GetLock(ref string) (lock *types.Lock, err error)
+	PutLock(ref string, lock types.Lock) error
+	DeleteLock(ref string) error
+}
+```
+
+Also note that it is important the `GetState` method return the `store.ErrNotFound` error when a state does not exist. This error is used to identify when an `http.StatusNoContent` response should be sent
