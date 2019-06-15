@@ -18,7 +18,7 @@ func (c *Store) GetLock(ref string) (*types.Lock, error) {
 		return nil, err
 	}
 
-	var lock types.LockType
+	var lock types.LockDocument
 	if err := result.Decode(&lock); err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, store.ErrNotFound
@@ -34,7 +34,10 @@ func (c *Store) PutLock(ref string, lock types.Lock) error {
 	ctx, cancelFunc := newContext(&c.queryTimeout)
 	defer cancelFunc()
 
-	document := types.LockType{Ref: ref, Lock: lock}
+	document := types.LockDocument{
+		Ref:  ref,
+		Lock: lock,
+	}
 	opts := options.FindOneAndReplaceOptions{Upsert: &trueValue}
 	result := c.collection(c.lockCollectionName).FindOneAndReplace(ctx, bson.M{"ref": ref}, document, &opts)
 	if err := result.Err(); err != nil {

@@ -2,10 +2,8 @@ package mongodb
 
 import (
 	"context"
-	"fmt"
 	"time"
 
-	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -74,28 +72,25 @@ type Store struct {
 	queryTimeout        int
 }
 
+// WithClient allows an already connected client to be used
+func (c *Store) WithClient(client *mongo.Client) *Store {
+	c.client = client
+	return c
+}
+
 // Init initializes the backend
 func (c *Store) Init() error {
-	c.connectTimeout = viper.GetInt("backend.connect_timeout")
-	c.queryTimeout = viper.GetInt("backend.query_timeout")
+	// if there is no client then connect
+	if c.client == nil {
+		clientOptions := options.Client().ApplyURI(c.uri)
+		ctx, cancelFunc := newContext(&c.connectTimeout)
+		defer cancelFunc()
 
-	if c.uri = viper.GetString("backend.uri"); c.uri == "" {
-		return fmt.Errorf("no uri specified in backend configuration")
-	}
-
-	if c.database = viper.GetString("backend.database"); c.database == "" {
-		return fmt.Errorf("no database specified in backend configuration")
-	}
-
-	// connect
-	clientOptions := options.Client().ApplyURI(c.uri)
-	ctx, cancelFunc := newContext(&c.connectTimeout)
-	defer cancelFunc()
-
-	if client, err := mongo.Connect(ctx, clientOptions); err == nil {
-		c.client = client
-	} else {
-		return err
+		if client, err := mongo.Connect(ctx, clientOptions); err == nil {
+			c.client = client
+		} else {
+			return err
+		}
 	}
 
 	// create indexes

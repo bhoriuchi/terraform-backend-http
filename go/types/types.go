@@ -5,15 +5,16 @@ type EncryptedState struct {
 	EncryptedData string `json:"encrypted_data"`
 }
 
-// StateType a state
-type StateType struct {
-	Ref       string      `json:"ref"`
-	Encrypted bool        `json:"encrypted"`
-	State     interface{} `json:"state"`
+// StateDocument a state with reference
+type StateDocument struct {
+	Ref       string                 `json:"ref"`
+	Encrypted bool                   `json:"encrypted"`
+	State     map[string]interface{} `json:"state"`
+	Metadata  map[string]interface{} `json:"metadata"`
 }
 
-// LockType a lock
-type LockType struct {
+// LockDocument a lock with reference
+type LockDocument struct {
 	Ref  string `json:"ref"`
 	Lock Lock   `json:"lock"`
 }

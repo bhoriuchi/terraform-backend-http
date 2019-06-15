@@ -14,8 +14,8 @@ type Store interface {
 	Init() error
 
 	// state
-	GetState(ref string) (state interface{}, encrypted bool, err error)
-	PutState(ref string, state interface{}, encrypted bool) error
+	GetState(ref string) (state map[string]interface{}, encrypted bool, err error)
+	PutState(ref string, state, metadata map[string]interface{}, encrypted bool) error
 	DeleteState(ref string) error
 
 	// lock

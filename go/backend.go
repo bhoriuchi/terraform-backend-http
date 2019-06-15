@@ -10,15 +10,15 @@ import (
 	gocrypto "github.com/bhoriuchi/go-crypto"
 	"github.com/bhoriuchi/terraform-backend-http/go/store"
 	"github.com/bhoriuchi/terraform-backend-http/go/types"
-	"github.com/go-chi/render"
 )
 
 // Options backend options
 type Options struct {
-	EncryptionKey  interface{}
-	Logger         func(level, message string, err error)
-	GetRefFunc     interface{}
-	GetEncryptFunc interface{}
+	EncryptionKey   interface{}
+	Logger          func(level, message string, err error)
+	GetRefFunc      interface{}
+	GetEncryptFunc  interface{}
+	GetMetadataFunc func(state map[string]interface{}) map[string]interface{}
 }
 
 // NewBackend creates a new backend
@@ -33,6 +33,14 @@ func NewBackend(store store.Store, opts ...*Options) *Backend {
 	}
 	if backend.options == nil {
 		backend.options = &Options{}
+	}
+	if backend.options.Logger == nil {
+		backend.options.Logger = func(level, message string, err error) {}
+	}
+	if backend.options.GetMetadataFunc == nil {
+		backend.options.GetMetadataFunc = func(state map[string]interface{}) map[string]interface{} {
+			return map[string]interface{}{}
+		}
 	}
 
 	return &backend
@@ -257,7 +265,7 @@ func (c *Backend) HandleLockState(w http.ResponseWriter, r *http.Request) {
 
 	// decode body
 	var lock types.Lock
-	if err := render.DecodeJSON(r.Body, &lock); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&lock); err != nil {
 		c.options.Logger(
 			"debug",
 			fmt.Sprintf("error decoding LOCK request body for ref %s", ref),
@@ -308,7 +316,7 @@ func (c *Backend) HandleUnlockState(w http.ResponseWriter, r *http.Request) {
 
 	// decode body
 	var lock types.Lock
-	if err := render.DecodeJSON(r.Body, &lock); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&lock); err != nil {
 		c.options.Logger(
 			"error",
 			fmt.Sprintf("error decoding UNLOCK request body for ref %s", ref),
@@ -362,7 +370,7 @@ func (c *Backend) HandleUpdateState(w http.ResponseWriter, r *http.Request) {
 
 	// decode body
 	var state map[string]interface{}
-	if err := render.DecodeJSON(r.Body, &state); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&state); err != nil {
 		c.options.Logger(
 			"error",
 			fmt.Sprintf("error decoding request body for ref %s", ref),
@@ -376,6 +384,10 @@ func (c *Backend) HandleUpdateState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// get metadata using a metadata processor
+	metadata := c.options.GetMetadataFunc(state)
+
+	// encrypt if specified
 	if encrypt {
 		encryptedState, err := c.encryptState(state)
 		if err != nil {
@@ -391,7 +403,7 @@ func (c *Backend) HandleUpdateState(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// set the state on the backend
-	if err := c.store.PutState(ref, state, encrypt); err != nil {
+	if err := c.store.PutState(ref, state, metadata, encrypt); err != nil {
 		c.options.Logger(
 			"debug",
 			fmt.Sprintf("error updating terraform state for ref %s", ref),
