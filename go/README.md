@@ -31,7 +31,7 @@ func main() {
 	})
 
 	// create a backend
-	backend := backend.NewBackend(store, &backend.Options{
+	tfbackend := backend.NewBackend(store, &backend.Options{
 		EncryptionKey: []byte("thisishardlysecure"),
 		Logger: func(level, message string, err error) {
 			if err != nil {
@@ -46,7 +46,7 @@ func main() {
 			}
 		},
 	})
-	if err := backend.Init(); err != nil {
+	if err := tfbackend.Init(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -54,15 +54,15 @@ func main() {
 	http.HandleFunc("/backend", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "LOCK":
-			backend.HandleLockState(w, r)
+			tfbackend.HandleLockState(w, r)
 		case "UNLOCK":
-			backend.HandleUnlockState(w, r)
+			tfbackend.HandleUnlockState(w, r)
 		case http.MethodGet:
-			backend.HandleGetState(w, r)
+			tfbackend.HandleGetState(w, r)
 		case http.MethodPost:
-			backend.HandleUpdateState(w, r)
+			tfbackend.HandleUpdateState(w, r)
 		case http.MethodDelete:
-			backend.HandleDeleteState(w, r)
+			tfbackend.HandleDeleteState(w, r)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
